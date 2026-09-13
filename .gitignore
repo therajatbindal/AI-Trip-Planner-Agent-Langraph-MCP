@@ -1,0 +1,7 @@
+# Ignore virtual environments
+venv/
+env/
+langgraph_env3/
+
+# Ignore environment variables file (contains secrets)
+.env
