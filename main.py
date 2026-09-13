@@ -14,9 +14,9 @@ from langchain_core.messages import (
 
 from langchain_groq import ChatGroq
 
-#from tools.Flight_Tool import Flight_Search
+from tools.Flight_Tool import Flight_Search
 from mcp_client import tavily_mcp_search
-from tools.Tavily_Tool import Tavily_Search
+#from tools.Tavily_Tool import Tavily_Search
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -144,12 +144,21 @@ checkpointer.setup()
 app = graph.compile(checkpointer=checkpointer)
 
 if __name__ == "__main__":
-    config={
+    # config={
+    #    "configurable": {
+    #        "thread_id": "user_MCP"
+    #    }
+    # }
+    
+    # Every Run Starts Fresh
+    import uuid
+    config = {
         "configurable": {
-            "thread_id": "user_MCP"
+            "thread_id": str(uuid.uuid4())
         }
     }
-    
+
+
     user_query = input("Enter your travel query: ")
 
     result = app.invoke(
