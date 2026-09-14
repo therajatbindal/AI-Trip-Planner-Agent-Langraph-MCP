@@ -14,8 +14,15 @@ from langchain_core.messages import (
 
 from langchain_groq import ChatGroq
 
-from tools.Flight_Tool import Flight_Search
-from mcp_client import tavily_mcp_search
+#from tools.Flight_Tool import Flight_Search
+#from mcp_client import tavily_mcp_search
+from mcp_client import (
+     tavily_mcp_search,
+     aviation_mcp_call,
+     get_airlines,
+     get_airports
+)
+
 #from tools.Tavily_Tool import Tavily_Search
 from dotenv import load_dotenv
 load_dotenv()
@@ -37,18 +44,96 @@ class TravelState(TypedDict):
     itinerary: str
     llm_calls: int
 
-# Flight Agent
-def Flight_Agent(state: TravelState):
-    query = state["user_input"]
-    flight_data= Flight_Search(query)
+# Flight Agent using API
+# def Flight_Agent(state: TravelState):
+#     query = state["user_input"]
+#     flight_data= Flight_Search(query)
     
+#     return {
+#         "flight_results": flight_data,
+#         "messages": [
+#             AIMessage(content=f"Flight results fetched")
+#         ],
+#         "llm_calls": state.get("llm_calls", 0) + 1  # No LLM used in this agent
+#     }
+
+
+# Flight Tool Router Prompt
+FLIGHT_AGENT_PROMPT = """
+You are a travel flight expert.
+
+User Query:
+{query}
+
+Airport Information:
+{airport_data}
+
+Airline Information:
+{airline_data}
+
+Generate:
+
+1. Likely departure airport
+2. Likely arrival airport
+3. Airlines serving this route
+4. Typical flight duration
+5. Estimated airfare range
+6. Peak season pricing warning
+7. Booking advice
+
+Return concise travel guidance.
+"""
+
+
+# Flight Agent with MCP
+def Flight_Agent(state: TravelState):
+    print("\nINSIDE FLIGHT AGENT\n")
+
+    query = state["user_input"]
+
+    try:
+
+        airports = asyncio.run(
+            aviation_mcp_call(
+                "list_airports"
+            )
+        )
+
+        airlines = asyncio.run(
+            aviation_mcp_call(
+                "list_airlines"
+            )
+        )
+
+        prompt = FLIGHT_AGENT_PROMPT.format(
+            query=query,
+            airport_data=str(airports)[:3000],
+            airline_data=str(airlines)[:3000]
+        )
+
+        response = llm.invoke([
+            SystemMessage(
+                content="You are an expert travel flight planner."
+            ),
+            HumanMessage(content=prompt)
+        ])
+
+        flight_data = response.content
+
+    except Exception as e:
+
+        flight_data = f"Flight information unavailable: {str(e)}"
+
     return {
         "flight_results": flight_data,
         "messages": [
-            AIMessage(content=f"Flight results fetched")
+            AIMessage(
+                content="Flight recommendations generated"
+            )
         ],
-        "llm_calls": state.get("llm_calls", 0) + 1  # No LLM used in this agent
+        "llm_calls": state.get("llm_calls", 0) + 1
     }
+
 
 # Hotel Agent
 def Hotel_Agent(state: TravelState):
